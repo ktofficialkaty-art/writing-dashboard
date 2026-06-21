@@ -112,39 +112,10 @@ header.top{
 .sentence-block .corr{color:var(--accent-teal);font-style:italic;}
 
 .loading{text-align:center;padding:60px 0;color:var(--ink-soft);}
-
-.login-screen{position:fixed;inset:0;background:
-    radial-gradient(circle at 12% 8%, #f0e6fb 0%, transparent 42%),
-    radial-gradient(circle at 88% 18%, #f7eefb 0%, transparent 40%),
-    var(--paper);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px;}
-.login-box{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:36px 32px;max-width:360px;width:100%;}
-.login-box h2{color:var(--plum-700);font-size:1.2rem;margin-bottom:6px;text-align:center;}
-.login-box p{color:var(--ink-soft);font-size:.85rem;text-align:center;margin-bottom:22px;}
-.login-box input{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:10px;font-size:.92rem;margin-bottom:12px;outline:none;box-sizing:border-box;}
-.login-box input:focus{border-color:var(--plum-500);}
-.login-err{color:var(--accent-rose);font-size:.8rem;min-height:1.1em;margin-bottom:10px;text-align:center;}
-.login-btn{width:100%;background:var(--plum-600);color:#fff;border:none;border-radius:999px;padding:11px;font-weight:700;font-size:.92rem;cursor:pointer;font-family:"Noto Sans SC",sans-serif;}
-.login-btn:hover{filter:brightness(1.08);}
-.login-btn:disabled{opacity:.6;cursor:default;}
-.logout-btn{background:none;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.78rem;color:var(--ink-soft);cursor:pointer;font-family:"Noto Sans SC",sans-serif;}
-.logout-btn:hover{background:var(--plum-50);}
 </style>
 </head>
 <body>
 
-<!-- ===== 登录界面 ===== -->
-<div id="loginScreen" class="login-screen">
-  <div class="login-box">
-    <h2>教师后台登录</h2>
-    <p>请输入账号密码查看学生练习数据</p>
-    <input type="email" id="loginEmail" placeholder="邮箱" autocomplete="username">
-    <input type="password" id="loginPassword" placeholder="密码" autocomplete="current-password">
-    <div class="login-err" id="loginErr"></div>
-    <button class="login-btn" id="loginBtn">登录</button>
-  </div>
-</div>
-
-<div id="appShell" style="display:none;">
 <header class="top">
   <div class="top-inner">
     <div class="brand"><span class="dot"></span>写作练习 · 教师后台</div>
@@ -154,7 +125,6 @@ header.top{
       <button class="session-tab" data-session="s3">S3</button>
     </div>
     <span class="livedot"></span><span class="livelabel">实时同步中</span>
-    <button class="logout-btn" id="logoutBtn">退出登录</button>
   </div>
 </header>
 
@@ -189,11 +159,9 @@ header.top{
   </div>
 
 </div>
-</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script>
 try{
   firebase.initializeApp({
@@ -435,45 +403,7 @@ function attachListener(){
     document.getElementById('loadingTip').textContent='连接出错：'+e.message;
   }
 }
-// ===== 登录逻辑 =====
-const loginBtn=document.getElementById('loginBtn');
-const loginEmail=document.getElementById('loginEmail');
-const loginPassword=document.getElementById('loginPassword');
-const loginErr=document.getElementById('loginErr');
-const logoutBtn=document.getElementById('logoutBtn');
-let listenersAttached=false;
-
-function doLogin(){
-  const email=loginEmail.value.trim();
-  const pw=loginPassword.value;
-  if(!email||!pw){loginErr.textContent='请输入邮箱和密码';return;}
-  loginErr.textContent='';
-  loginBtn.disabled=true;
-  loginBtn.textContent='登录中…';
-  firebase.auth().signInWithEmailAndPassword(email,pw)
-    .catch(err=>{ loginErr.textContent='登录失败：'+(err.message||'账号或密码错误'); })
-    .finally(()=>{ loginBtn.disabled=false; loginBtn.textContent='登录'; });
-}
-loginBtn.addEventListener('click',doLogin);
-loginPassword.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-loginEmail.addEventListener('keydown',e=>{if(e.key==='Enter')loginPassword.focus();});
-
-logoutBtn.addEventListener('click',()=>{ firebase.auth().signOut(); });
-
-if(typeof firebase!=='undefined' && firebase.apps && firebase.apps.length){
-  firebase.auth().onAuthStateChanged(user=>{
-    if(user){
-      document.getElementById('loginScreen').style.display='none';
-      document.getElementById('appShell').style.display='block';
-      if(!listenersAttached){ listenersAttached=true; attachListener(); }
-    }else{
-      document.getElementById('loginScreen').style.display='flex';
-      document.getElementById('appShell').style.display='none';
-    }
-  });
-}else{
-  loginErr.textContent='Firebase 未能初始化，请检查网络连接';
-}
+attachListener();
 </script>
 
 </body>
