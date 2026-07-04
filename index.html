@@ -111,6 +111,25 @@ header.top{
 .sentence-block .stu{color:var(--accent-rose);}
 .sentence-block .corr{color:var(--accent-teal);font-style:italic;}
 
+.section-label{font-weight:800;color:var(--plum-700);font-size:.95rem;margin:18px 0 10px;}
+.essay-card{background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:14px;overflow:hidden;}
+.essay-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;gap:12px;flex-wrap:wrap;}
+.essay-title{font-weight:700;color:var(--plum-700);font-size:.9rem;}
+.essay-meta{font-size:.78rem;color:var(--ink-soft);margin-top:2px;}
+.essay-body{padding:0 16px 16px;border-top:1px solid var(--line);}
+.essay-content{background:var(--plum-50);border-radius:10px;padding:12px 14px;font-size:.88rem;line-height:1.7;color:var(--ink);white-space:pre-wrap;margin:12px 0;max-height:260px;overflow-y:auto;}
+.essay-empty{padding:14px 0;color:var(--ink-soft);font-size:.85rem;font-style:italic;}
+.essay-feedback-form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;margin-top:10px;}
+.essay-feedback-form textarea{flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:.85rem;font-family:"Noto Sans SC",sans-serif;resize:vertical;min-height:60px;}
+.essay-feedback-form textarea:focus{outline:none;border-color:var(--plum-500);}
+.essay-score-input{width:70px;padding:9px 8px;border:1px solid var(--line);border-radius:10px;font-size:.85rem;text-align:center;}
+.essay-score-input:focus{outline:none;border-color:var(--plum-500);}
+.essay-push-btn{background:var(--plum-600);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:"Noto Sans SC",sans-serif;white-space:nowrap;}
+.essay-push-btn:hover{filter:brightness(1.08);}
+.essay-pushed-flag{font-size:.78rem;color:var(--accent-teal);font-weight:700;opacity:0;transition:.3s;margin-left:8px;}
+.essay-pushed-flag.show{opacity:1;}
+.essay-fb-existing{font-size:.78rem;color:var(--ink-soft);margin-top:8px;}
+
 .loading{text-align:center;padding:60px 0;color:var(--ink-soft);}
 </style>
 </head>
@@ -123,6 +142,8 @@ header.top{
       <button class="session-tab active" data-session="s1">S1</button>
       <button class="session-tab" data-session="s2">S2</button>
       <button class="session-tab" data-session="s3">S3</button>
+      <button class="session-tab" data-session="s4">S4</button>
+      <button class="session-tab" data-session="s5">S5</button>
     </div>
     <span class="livedot"></span><span class="livelabel">实时同步中</span>
   </div>
@@ -155,6 +176,11 @@ header.top{
         <span>总体正确率：<b id="detailAcc"></b></span>
       </div>
     </div>
+    <div id="essaySection" style="display:none;">
+      <div class="section-label">✍️ 写作作业</div>
+      <div id="essayList"></div>
+    </div>
+    <div class="section-label" id="attemptLabel" style="display:none;">📝 客观题练习记录</div>
     <div id="attemptList"></div>
   </div>
 
@@ -180,6 +206,13 @@ try{
 const SESSION_CONFIG={
   s1:{
     path:'s1_attempts',
+    essayPath:'s1_essays',
+    excludePrefixes:['S5__'],
+    essayLabels:{
+      hw_household:'作业① · Household 折线图',
+      hw_ukphone:'作业② · UK Telephone Calls 柱状图',
+      hw_car:'作业③ · Car 柱状图'
+    },
     exLabel:a=>{
       const M={
         ex1_up:'练习1 · 上升类动词',
@@ -195,6 +228,13 @@ const SESSION_CONFIG={
   },
   s2:{
     path:'s2_attempts',
+    essayPath:'s2_essays',
+    essayLabels:{
+      hw_household:'作业一① · Household 折线图',
+      hw_ukphone:'作业一② · UK Telephone Calls 柱状图',
+      hw_car:'作业一③ · Car 柱状图',
+      hw_water_essay:'作业二 · 大作文（免费供水题）'
+    },
     exLabel:a=>{
       const M={
         fill_reach:'词汇 · 达到某个数值',
@@ -214,6 +254,12 @@ const SESSION_CONFIG={
   },
   s3:{
     path:'s3_attempts',
+    essayPath:'s3_essays',
+    essayLabels:{
+      hw_t5_j7:'作业 · Task1全文写作（剑7 Test1）',
+      hw_t5_j13:'作业 · Task1全文写作（剑13 Test3）',
+      hw_t5_task2:'Task2 全文写作（语言障碍题）'
+    },
     exLabel:a=>{
       const M={
         'vex-t3main':'Pie Chart主体段 · 综合填空',
@@ -227,12 +273,58 @@ const SESSION_CONFIG={
       };
       return M[a.exercise]||a.exercise;
     }
+  },
+  s4:{
+    path:'s4_attempts',
+    essayPath:'s4_essays',
+    essayLabels:{
+      hw_dance:'Task 1 全文写作 · 舞蹈课程',
+      hw_police:'Task 1 全文写作 · 警察预算',
+      hw_bigessay:'Task 2 全文写作 · 毕业后与父母同住'
+    },
+    exLabel:a=>{
+      const M={
+        practice_g1:'小作文句式综合 · 极值与对比表达',
+        practice_g2:'小作文句式综合 · 比较级与 tend to / those',
+        practice_g3:'小作文句式综合 · 极个别与升降表达',
+        dragsort_adv2:'Task 2 逻辑训练 · Advantage 2 排序',
+        dragsort_bp3:'Task 2 逻辑训练 · 让步反驳段排序',
+        classify_bigessay:'Task 2 逻辑训练 · 推理分类'
+      };
+      if((a.exercise||'').startsWith('logic_tf_')){
+        const n=Number((a.exercise||'').replace('logic_tf_tf_',''))+1;
+        return '图表逻辑判断 · 第'+n+'题';
+      }
+      return M[a.exercise]||a.exercise;
+    }
+  },
+  s5:{
+    path:'s1_attempts',
+    essayPath:'s1_essays',
+    keyPrefix:'S5__',
+    essayLabels:{
+      hw_harbour:'Task 1 全文写作 · Porth Harbour 地图题',
+      hw_competition_cooperation:'Task 2 全文写作 · 竞争与合作'
+    },
+    exLabel:a=>{
+      const M={
+        chunk_competition:'Task 2 语块排序 · Competition',
+        chunk_cooperation:'Task 2 语块排序 · Cooperation',
+        conclusion_fill:'Task 2 结尾段填空',
+        map_mcq:'地图题 · 核心知识选择',
+        passive_writing:'地图题 · 被动语态句子写作',
+        essay_match:'Task 2 论证表达中英配对'
+      };
+      return M[a.exercise]||a.exercise;
+    }
   }
 };
 
-let SESSION_DATA={s1:{},s2:{},s3:{}};
+let SESSION_DATA={s1:{},s2:{},s3:{},s4:{},s5:{}};
+let ESSAY_DATA={s1:{},s2:{},s3:{},s4:{},s5:{}};
 let currentSession='s1';
 let currentStudent=null;
+const sanitizeKey=s=>s.replace(/[.#$\[\]\/]/g,'_');
 
 const accClass=p=>p>=80?'good':(p>=50?'mid':'low');
 
@@ -244,12 +336,13 @@ const overall=attempts=>{
 
 function renderStats(){
   const data=SESSION_DATA[currentSession];
-  const names=Object.keys(data);
+  const essayData=ESSAY_DATA[currentSession]||{};
+  const allNames=new Set([...Object.keys(data),...Object.keys(essayData)]);
   let totalAttempts=0,c=0,t=0;
-  names.forEach(n=>{
+  Object.keys(data).forEach(n=>{
     data[n].forEach(a=>{totalAttempts++;c+=(a.correct||0);t+=(a.total||0);});
   });
-  document.getElementById('statStudents').textContent=names.length;
+  document.getElementById('statStudents').textContent=allNames.size;
   document.getElementById('statAttempts').textContent=totalAttempts;
   document.getElementById('statAccuracy').textContent=(t?Math.round(c/t*100):0)+'%';
 }
@@ -257,38 +350,128 @@ function renderStats(){
 function renderList(filter){
   filter=(filter||'').trim();
   const data=SESSION_DATA[currentSession];
+  const essayData=ESSAY_DATA[currentSession]||{};
+  const cfg=SESSION_CONFIG[currentSession];
+  const allNames=new Set([...Object.keys(data),...Object.keys(essayData)]);
   const container=document.getElementById('studentList');
   const empty=document.getElementById('emptyState');
-  const names=Object.keys(data).filter(n=>n.includes(filter));
+  const names=[...allNames].filter(n=>n.includes(filter));
   container.innerHTML='';
   if(names.length===0){
     empty.style.display='block';
-    empty.textContent=Object.keys(data).length===0?'暂无学生练习数据，等学生开始做练习后会自动出现在这里':'没有匹配的学生姓名';
+    empty.textContent=allNames.size===0?'暂无学生练习数据，等学生开始做练习后会自动出现在这里':'没有匹配的学生姓名';
     return;
   }
   empty.style.display='none';
-  names.sort((a,b)=>{
-    const la=data[a][0]?data[a][0].ts||0:0;
-    const lb=data[b][0]?data[b][0].ts||0:0;
-    return lb-la;
-  });
+  const lastTs=n=>{
+    const a=(data[n]&&data[n][0])?data[n][0].ts||0:0;
+    let e=0;
+    if(essayData[n])Object.values(essayData[n]).forEach(v=>{if(v&&v.updatedAt)e=Math.max(e,v.updatedAt);});
+    return Math.max(a,e);
+  };
+  names.sort((a,b)=>lastTs(b)-lastTs(a));
   names.forEach(n=>{
-    const attempts=data[n];
+    const attempts=data[n]||[];
+    const essays=essayData[n]||{};
+    const essayCount=Object.keys(essays).filter(k=>essays[k]&&essays[k].content).length;
     const acc=overall(attempts);
     const last=attempts[0];
     const card=document.createElement('div');
     card.className='student-card';
+    const rightBadge=attempts.length
+      ? `<span class="badge ${accClass(acc)}">${acc}%</span>`
+      : (cfg.essayLabels?`<span class="badge neutral">✍️ ${essayCount}篇</span>`:`<span class="badge neutral">-</span>`);
+    const leftText=cfg.essayLabels
+      ? `客观题 ${attempts.length} 次${essayCount?(' · 作文 '+essayCount+' 篇'):''}`
+      : `练习 ${attempts.length} 次`;
+    const recentTs=lastTs(n);
+    const recentStr=last&&last.dateStr?last.dateStr:(essays&&Object.values(essays).find(v=>v&&v.updatedDateStr)?Object.values(essays).find(v=>v&&v.updatedDateStr).updatedDateStr:'-');
     card.innerHTML=`
       <div class="name">${n}</div>
       <div class="meta">
-        <span>练习 ${attempts.length} 次</span>
-        <span class="badge ${accClass(acc)}">${acc}%</span>
+        <span>${leftText}</span>
+        ${rightBadge}
       </div>
-      <div class="recent">最近一次：${last&&last.dateStr?last.dateStr:'-'}</div>
+      <div class="recent">最近一次：${recentStr}</div>
     `;
     card.addEventListener('click',()=>openDetail(n));
     container.appendChild(card);
   });
+}
+
+function renderEssaySection(name){
+  const cfg=SESSION_CONFIG[currentSession];
+  const essaySection=document.getElementById('essaySection');
+  const attemptLabel=document.getElementById('attemptLabel');
+  if(!cfg.essayLabels){
+    essaySection.style.display='none';
+    attemptLabel.style.display='none';
+    return;
+  }
+  essaySection.style.display='block';
+  attemptLabel.style.display='block';
+  const essays=ESSAY_DATA[currentSession][name]||{};
+  const list=document.getElementById('essayList');
+  list.innerHTML='';
+  Object.keys(cfg.essayLabels).forEach(key=>{
+    const label=cfg.essayLabels[key];
+    const data=essays[key];
+    const card=document.createElement('div');
+    card.className='essay-card';
+    if(!data||!data.content){
+      card.innerHTML=`
+        <div class="essay-head">
+          <div><div class="essay-title">${label}</div><div class="essay-meta">尚未提交</div></div>
+        </div>`;
+      list.appendChild(card);
+      return;
+    }
+    const existingComment=data.teacherComment||'';
+    const existingScore=data.teacherScore||'';
+    const fbExisting=data.feedbackDateStr?`<div class="essay-fb-existing">上次反馈：${data.feedbackDateStr}</div>`:'';
+    card.innerHTML=`
+      <div class="essay-head">
+        <div>
+          <div class="essay-title">${label}</div>
+          <div class="essay-meta">字数 ${data.wordCount||0} · 最后保存 ${data.updatedDateStr||''}</div>
+        </div>
+      </div>
+      <div class="essay-body">
+        <div class="essay-content">${(data.content||'').replace(/</g,'&lt;')}</div>
+        <div class="essay-feedback-form">
+          <textarea class="fb-comment-input" placeholder="写一句简短点评…">${existingComment.replace(/</g,'&lt;')}</textarea>
+          <input class="essay-score-input" type="text" placeholder="评分" value="${(existingScore+'').replace(/"/g,'&quot;')}">
+          <button class="essay-push-btn">推送反馈</button>
+          <span class="essay-pushed-flag">已推送 ✓</span>
+        </div>
+        ${fbExisting}
+      </div>
+    `;
+    const btn=card.querySelector('.essay-push-btn');
+    const commentInput=card.querySelector('.fb-comment-input');
+    const scoreInput=card.querySelector('.essay-score-input');
+    const flag=card.querySelector('.essay-pushed-flag');
+    btn.addEventListener('click',()=>{
+      pushEssayFeedback(currentSession,name,key,commentInput.value.trim(),scoreInput.value.trim(),flag);
+    });
+    list.appendChild(card);
+  });
+}
+
+function pushEssayFeedback(session,studentName,essayKey,comment,score,flagEl){
+  try{
+    if(typeof firebase==='undefined'||!firebase.apps||!firebase.apps.length)return;
+    const cfg=SESSION_CONFIG[session];
+    const safeName=(cfg.keyPrefix||'')+sanitizeKey(studentName);
+    firebase.database().ref(cfg.essayPath+'/'+safeName+'/'+essayKey).update({
+      teacherComment:comment,
+      teacherScore:score,
+      feedbackAt:Date.now(),
+      feedbackDateStr:new Date().toLocaleString('zh-CN')
+    }).then(()=>{
+      if(flagEl){flagEl.classList.add('show');setTimeout(()=>flagEl.classList.remove('show'),1800);}
+    }).catch(e=>{alert('推送失败：'+e.message);});
+  }catch(e){alert('推送出错：'+e.message);}
 }
 
 function openDetail(name){
@@ -303,6 +486,7 @@ function renderDetail(name){
   document.getElementById('detailName').textContent=name;
   document.getElementById('detailCount').textContent=attempts.length;
   document.getElementById('detailAcc').textContent=overall(attempts)+'%';
+  renderEssaySection(name);
   const list=document.getElementById('attemptList');
   list.innerHTML='';
   const exLabel=SESSION_CONFIG[currentSession].exLabel;
@@ -326,13 +510,15 @@ function renderDetail(name){
       bodyHtml=wrong.length
         ? wrong.map(w=>`
             <div class="wrong-item">
-              <div class="q">${(w.question||'').replace(/</g,'&lt;')}</div>
+              <div class="q">${(w.question||w.q||'').replace(/</g,'&lt;')}</div>
               <div class="ans-row">
-                <span class="stu">学生答案：${(w.studentAnswer||'(空)').replace(/</g,'&lt;')}</span>
-                <span class="corr">正确答案：${(w.correctAnswer||'').replace(/</g,'&lt;')}</span>
+                <span class="stu">学生答案：${(w.studentAnswer||w.given||'(空)').replace(/</g,'&lt;')}</span>
+                <span class="corr">正确答案：${(w.correctAnswer||w.answer||'').replace(/</g,'&lt;')}</span>
               </div>
             </div>`).join('')
-        : '<div class="no-wrong">✓ 本次全部正确，没有错题</div>';
+        : (Number(a.correct)===Number(a.total)
+          ? '<div class="no-wrong">✓ 本次全部正确，没有错题</div>'
+          : '<div class="no-wrong">本次已记录总分；该练习未保存逐题错题明细。</div>');
     }
     wrap.innerHTML=`
       <div class="attempt-head">
@@ -378,11 +564,13 @@ function attachListener(){
       return;
     }
     Object.keys(SESSION_CONFIG).forEach(sessKey=>{
-      const path=SESSION_CONFIG[sessKey].path;
-      firebase.database().ref(path).on('value',snap=>{
+      const cfg=SESSION_CONFIG[sessKey];
+      firebase.database().ref(cfg.path).on('value',snap=>{
         const val=snap.val()||{};
         const data={};
         Object.keys(val).forEach(key=>{
+          if(cfg.keyPrefix&&!key.startsWith(cfg.keyPrefix))return;
+          if(cfg.excludePrefixes&&cfg.excludePrefixes.some(prefix=>key.startsWith(prefix)))return;
           const raw=val[key]||{};
           const attempts=Object.values(raw).sort((x,y)=>(y.ts||0)-(x.ts||0));
           const displayName=(attempts[0]&&attempts[0].name)?attempts[0].name:key;
@@ -398,6 +586,22 @@ function attachListener(){
       },err=>{
         document.getElementById('loadingTip').textContent='读取数据失败：'+err.message;
       });
+      if(cfg.essayPath){
+        firebase.database().ref(cfg.essayPath).on('value',snap=>{
+          const val=snap.val()||{};
+          const data={};
+          Object.keys(val).forEach(safeKey=>{
+            if(cfg.keyPrefix&&!safeKey.startsWith(cfg.keyPrefix))return;
+            if(cfg.excludePrefixes&&cfg.excludePrefixes.some(prefix=>safeKey.startsWith(prefix)))return;
+            const essays=val[safeKey]||{};
+            let displayName=safeKey;
+            Object.keys(essays).forEach(ek=>{ if(essays[ek]&&essays[ek].name) displayName=essays[ek].name; });
+            data[displayName]=essays;
+          });
+          ESSAY_DATA[sessKey]=data;
+          if(sessKey===currentSession&&currentStudent)renderDetail(currentStudent);
+        },err=>console.warn('读取作文数据失败',err));
+      }
     });
   }catch(e){
     document.getElementById('loadingTip').textContent='连接出错：'+e.message;
