@@ -84,6 +84,8 @@ header.top{
 #detailView{display:none;}
 .back-btn{background:none;border:1px solid var(--line);border-radius:999px;padding:8px 18px;font-size:.85rem;color:var(--plum-700);cursor:pointer;margin-bottom:18px;font-weight:700;}
 .back-btn:hover{background:var(--plum-50);}
+.delete-btn{background:#fff;border:1px solid var(--accent-rose);border-radius:999px;padding:8px 16px;font-size:.85rem;color:var(--accent-rose);cursor:pointer;font-weight:700;font-family:"Noto Sans SC",sans-serif;}
+.delete-btn:hover{background:#f8e9ef;}
 .detail-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
 .detail-head h2{color:var(--plum-900);font-size:1.3rem;}
 .detail-stats{display:flex;gap:18px;font-size:.86rem;color:var(--ink-soft);}
@@ -144,6 +146,7 @@ header.top{
       <button class="session-tab" data-session="s3">S3</button>
       <button class="session-tab" data-session="s4">S4</button>
       <button class="session-tab" data-session="s5">S5</button>
+      <button class="session-tab" data-session="s6">S6</button>
     </div>
     <span class="livedot"></span><span class="livelabel">实时同步中</span>
   </div>
@@ -174,6 +177,7 @@ header.top{
       <div class="detail-stats">
         <span>练习次数：<b id="detailCount"></b></span>
         <span>总体正确率：<b id="detailAcc"></b></span>
+        <button class="delete-btn" id="deleteStudentBtn">删除该学生记录</button>
       </div>
     </div>
     <div id="essaySection" style="display:none;">
@@ -207,7 +211,7 @@ const SESSION_CONFIG={
   s1:{
     path:'s1_attempts',
     essayPath:'s1_essays',
-    excludePrefixes:['S5__'],
+    excludePrefixes:['S4__','S5__','S6__'],
     essayLabels:{
       hw_household:'作业① · Household 折线图',
       hw_ukphone:'作业② · UK Telephone Calls 柱状图',
@@ -275,8 +279,9 @@ const SESSION_CONFIG={
     }
   },
   s4:{
-    path:'s4_attempts',
-    essayPath:'s4_essays',
+    path:'s1_attempts',
+    essayPath:'s1_essays',
+    keyPrefix:'S4__',
     essayLabels:{
       hw_dance:'Task 1 全文写作 · 舞蹈课程',
       hw_police:'Task 1 全文写作 · 警察预算',
@@ -317,14 +322,35 @@ const SESSION_CONFIG={
       };
       return M[a.exercise]||a.exercise;
     }
+  },
+  s6:{
+    path:'s1_attempts',
+    essayPath:'s1_essays',
+    keyPrefix:'S6__',
+    essayLabels:{
+      hw_s6_flowchart:'Task 1 全文写作 · Instant noodles 流程图',
+      hw_s6_task2_behavior:'Task 2 全文写作 · Student behavior'
+    },
+    exLabel:a=>{
+      const M={
+        t1_observation:'S6 Task 1 · 观察流程',
+        t1_thinking:'S6 Task 1 · 写作思路',
+        t1_passive:'S6 Task 1 · 被动语态动词',
+        t2_analysis:'S6 Task 2 · 审题选择',
+        t2_classify:'S6 Task 2 · 上下位词分类',
+        t2_argument:'S6 Task 2 · 论证引导选择'
+      };
+      return a.label||M[a.exercise]||a.exercise;
+    }
   }
 };
 
-let SESSION_DATA={s1:{},s2:{},s3:{},s4:{},s5:{}};
-let ESSAY_DATA={s1:{},s2:{},s3:{},s4:{},s5:{}};
+let SESSION_DATA={s1:{},s2:{},s3:{},s4:{},s5:{},s6:{}};
+let ESSAY_DATA={s1:{},s2:{},s3:{},s4:{},s5:{},s6:{}};
 let currentSession='s1';
 let currentStudent=null;
 const sanitizeKey=s=>s.replace(/[.#$\[\]\/]/g,'_');
+const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 
 const accClass=p=>p>=80?'good':(p>=50?'mid':'low');
 
@@ -474,6 +500,21 @@ function pushEssayFeedback(session,studentName,essayKey,comment,score,flagEl){
   }catch(e){alert('推送出错：'+e.message);}
 }
 
+function rawAttemptDetails(a){
+  const rows=[];
+  if(a.answer!==undefined)rows.push(['学生提交',Array.isArray(a.answer)?a.answer.join(' → '):String(a.answer)]);
+  if(a.studentAnswer!==undefined)rows.push(['学生答案',a.studentAnswer]);
+  if(a.given!==undefined)rows.push(['学生答案',a.given]);
+  if(a.accuracy!==undefined)rows.push(['正确率',a.accuracy+'%']);
+  if(a.kind!==undefined)rows.push(['类型',a.kind]);
+  if(!rows.length)return '';
+  return rows.map(([k,v])=>`
+    <div class="wrong-item">
+      <div class="q">${escapeHTML(k)}</div>
+      <div class="ans-row"><span class="stu">${escapeHTML(v)}</span></div>
+    </div>`).join('');
+}
+
 function openDetail(name){
   currentStudent=name;
   document.getElementById('listView').style.display='none';
@@ -505,20 +546,32 @@ function renderDetail(name){
         </div>`;
     }else{
       const wrong=a.wrong||[];
+      const details=a.details||[];
       const acc=a.total?Math.round((a.correct/a.total)*100):0;
       scoreHtml=`<div class="attempt-score badge ${accClass(acc)}">${a.correct}/${a.total} · ${acc}%</div>`;
-      bodyHtml=wrong.length
-        ? wrong.map(w=>`
+      bodyHtml=details.length
+        ? details.map(w=>`
             <div class="wrong-item">
               <div class="q">${(w.question||w.q||'').replace(/</g,'&lt;')}</div>
               <div class="ans-row">
                 <span class="stu">学生答案：${(w.studentAnswer||w.given||'(空)').replace(/</g,'&lt;')}</span>
                 <span class="corr">正确答案：${(w.correctAnswer||w.answer||'').replace(/</g,'&lt;')}</span>
+                <span class="${w.correct?'corr':'stu'}">${w.correct?'正确':'需订正'}</span>
               </div>
             </div>`).join('')
-        : (Number(a.correct)===Number(a.total)
-          ? '<div class="no-wrong">✓ 本次全部正确，没有错题</div>'
-          : '<div class="no-wrong">本次已记录总分；该练习未保存逐题错题明细。</div>');
+        : (wrong.length
+          ? wrong.map(w=>`
+              <div class="wrong-item">
+                <div class="q">${(w.question||w.q||'').replace(/</g,'&lt;')}</div>
+                <div class="ans-row">
+                  <span class="stu">学生答案：${(w.studentAnswer||w.given||'(空)').replace(/</g,'&lt;')}</span>
+                  <span class="corr">正确答案：${(w.correctAnswer||w.answer||'').replace(/</g,'&lt;')}</span>
+                </div>
+              </div>`).join('')
+          : (rawAttemptDetails(a)||(
+            Number(a.correct)===Number(a.total)
+              ? '<div class="no-wrong">✓ 本次全部正确，没有错题</div>'
+              : '<div class="no-wrong">本次已记录总分；该练习未保存逐题错题明细。</div>')));
     }
     wrap.innerHTML=`
       <div class="attempt-head">
@@ -542,6 +595,22 @@ document.getElementById('backBtn').addEventListener('click',()=>{
 });
 
 document.getElementById('searchInput').addEventListener('input',e=>renderList(e.target.value));
+
+document.getElementById('deleteStudentBtn').addEventListener('click',()=>{
+  if(!currentStudent)return;
+  const cfg=SESSION_CONFIG[currentSession];
+  const safeName=(cfg.keyPrefix||'')+sanitizeKey(currentStudent);
+  const msg='确定删除「'+currentStudent+'」在 '+currentSession.toUpperCase()+' 的所有练习和作文记录吗？此操作不能撤销。';
+  if(!confirm(msg))return;
+  if(typeof firebase==='undefined'||!firebase.apps||!firebase.apps.length){alert('Firebase 未连接，暂时无法删除。');return;}
+  const jobs=[firebase.database().ref(cfg.path+'/'+safeName).remove()];
+  if(cfg.essayPath)jobs.push(firebase.database().ref(cfg.essayPath+'/'+safeName).remove());
+  Promise.all(jobs).then(()=>{
+    currentStudent=null;
+    document.getElementById('detailView').style.display='none';
+    document.getElementById('listView').style.display='block';
+  }).catch(e=>alert('删除失败：'+e.message));
+});
 
 document.querySelectorAll('.session-tab').forEach(btn=>{
   btn.addEventListener('click',()=>{
