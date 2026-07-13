@@ -351,6 +351,19 @@ let currentSession='s1';
 let currentStudent=null;
 const sanitizeKey=s=>s.replace(/[.#$\[\]\/]/g,'_');
 const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const normalizeEssayContent=s=>String(s??'')
+  .replace(/\r\n?/g,'\n')
+  .replace(/<div\b[^>]*>\s*<br\s*\/?>\s*<\/div>/gi,'\n')
+  .replace(/<\/div>\s*<div\b[^>]*>/gi,'\n')
+  .replace(/<div\b[^>]*>/gi,'\n')
+  .replace(/<\/div>/gi,'')
+  .replace(/<br\s*\/?>/gi,'\n')
+  .replace(/&lt;div&gt;\s*&lt;br\s*\/?&gt;\s*&lt;\/div&gt;/gi,'\n')
+  .replace(/&lt;\/div&gt;\s*&lt;div&gt;/gi,'\n')
+  .replace(/&lt;div&gt;/gi,'\n')
+  .replace(/&lt;\/div&gt;/gi,'')
+  .replace(/&lt;br\s*\/?&gt;/gi,'\n')
+  .replace(/^\n+|\n+$/g,'');
 
 const accClass=p=>p>=80?'good':(p>=50?'mid':'low');
 
@@ -463,7 +476,7 @@ function renderEssaySection(name){
         </div>
       </div>
       <div class="essay-body">
-        <div class="essay-content">${(data.content||'').replace(/</g,'&lt;')}</div>
+        <div class="essay-content">${escapeHTML(normalizeEssayContent(data.content))}</div>
         <div class="essay-feedback-form">
           <textarea class="fb-comment-input" placeholder="写一句简短点评…">${existingComment.replace(/</g,'&lt;')}</textarea>
           <input class="essay-score-input" type="text" placeholder="评分" value="${(existingScore+'').replace(/"/g,'&quot;')}">
