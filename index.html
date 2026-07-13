@@ -351,19 +351,27 @@ let currentSession='s1';
 let currentStudent=null;
 const sanitizeKey=s=>s.replace(/[.#$\[\]\/]/g,'_');
 const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-const normalizeEssayContent=s=>String(s??'')
-  .replace(/\r\n?/g,'\n')
-  .replace(/<div\b[^>]*>\s*<br\s*\/?>\s*<\/div>/gi,'\n')
-  .replace(/<\/div>\s*<div\b[^>]*>/gi,'\n')
-  .replace(/<div\b[^>]*>/gi,'\n')
-  .replace(/<\/div>/gi,'')
-  .replace(/<br\s*\/?>/gi,'\n')
-  .replace(/&lt;div&gt;\s*&lt;br\s*\/?&gt;\s*&lt;\/div&gt;/gi,'\n')
-  .replace(/&lt;\/div&gt;\s*&lt;div&gt;/gi,'\n')
-  .replace(/&lt;div&gt;/gi,'\n')
-  .replace(/&lt;\/div&gt;/gi,'')
-  .replace(/&lt;br\s*\/?&gt;/gi,'\n')
-  .replace(/^\n+|\n+$/g,'');
+window.normalizeEssayContent=s=>{
+  const addBlockBreaks=value=>value
+    .replace(/\r\n?/g,'\n')
+    .replace(/<\s*br\b[^>]*>/gi,'\n')
+    .replace(/<\s*\/\s*(p|font)\s*>\s*<\s*(p|font)\b[^>]*>/gi,'\n\n')
+    .replace(/<\s*\/\s*(div|li|h[1-6])\s*>\s*<\s*(div|li|h[1-6])\b[^>]*>/gi,'\n')
+    .replace(/<\s*(div|p|li|h[1-6])\b[^>]*>/gi,'\n')
+    .replace(/<\s*\/\s*(div|p|li|h[1-6])\s*>/gi,'');
+  const stripFormatting=value=>{
+    const template=document.createElement('template');
+    template.innerHTML=value;
+    template.content.querySelectorAll('script,style').forEach(el=>el.remove());
+    return template.content.textContent||'';
+  };
+  let text=stripFormatting(addBlockBreaks(String(s??'')));
+  text=stripFormatting(addBlockBreaks(text));
+  return text
+    .replace(/\u00a0/g,' ')
+    .replace(/\n[ \t]*\n[ \t]*\n+/g,'\n\n')
+    .replace(/^\n+|\n+$/g,'');
+};
 
 const accClass=p=>p>=80?'good':(p>=50?'mid':'low');
 
@@ -476,7 +484,7 @@ function renderEssaySection(name){
         </div>
       </div>
       <div class="essay-body">
-        <div class="essay-content">${escapeHTML(normalizeEssayContent(data.content))}</div>
+        <div class="essay-content">${escapeHTML(window.normalizeEssayContent(data.content))}</div>
         <div class="essay-feedback-form">
           <textarea class="fb-comment-input" placeholder="写一句简短点评…">${existingComment.replace(/</g,'&lt;')}</textarea>
           <input class="essay-score-input" type="text" placeholder="评分" value="${(existingScore+'').replace(/"/g,'&quot;')}">
